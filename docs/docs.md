@@ -2,7 +2,7 @@
 
 ---
 
-## [abuild](./abuild) ![feature]
+## abuild ![feature]
 
 ### structure ![feature]
 
@@ -52,7 +52,7 @@
 > > make tool:
 > > > ![feature] make(Makefile)
 > >
-> > > ![feature] CMake(CMakeLists.txt)
+> > > ![feature] cmake(CMakeLists.txt)
 > >
 > > > ![feature] msbuild(*.sln)
 
@@ -64,7 +64,7 @@
 
 ---
 
-## [annasul](./annasul) ![feature]
+## annasul ![feature]
 
 ---
 
