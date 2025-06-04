@@ -40,16 +40,16 @@ pub enum Command {
     /// remove a workspace or project or profile
     #[clap(name = "remove")]
     Remove {},
-    /// redo the last command in workspace or project or profile
+    /// undo the last command in workspace or project or profile
     #[clap(name = "undo")]
     Undo,
-    /// build workspace or project or profile
+    /// redo the last command in workspace or project or profile
     #[clap(name = "redo")]
     Redo,
     /// build workspace or project or profile
     #[clap(name = "build")]
     Build {
-        #[clap(short, long, help = "the binary to run")]
+        #[clap(short, long, help = "the binary to build(default: build all binaries)")]
         binary: Option<String>,
     },
     /// clean workspace or project or profile
@@ -65,7 +65,10 @@ pub enum Command {
     },
     /// rebuild workspace or project or profile
     #[clap(name = "rebuild")]
-    Rebuild {},
+    Rebuild {
+        #[clap(short, long, help = "the binary to rebuild(default: rebuild all binaries)")]
+        binary: Option<String>,
+    },
 }
 
 pub fn parse_args() -> Cli {
