@@ -11,6 +11,15 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+//!
+//!
+//! [note]: https://img.shields.io/badge/note-orange.svg?color=ddbb00
+//!
+//! [bug]: https://img.shields.io/badge/bug-red.svg
+//!
+//! [feature]: https://img.shields.io/badge/feature-orange.svg
+//!
+
 use clap::{Parser, Subcommand};
 use std::ffi::OsString;
 use std::fmt::Debug;
@@ -66,7 +75,11 @@ pub enum Command {
     /// rebuild workspace or project or profile
     #[clap(name = "rebuild")]
     Rebuild {
-        #[clap(short, long, help = "the binary to rebuild(default: rebuild all binaries)")]
+        #[clap(
+            short,
+            long,
+            help = "the binary to rebuild(default: rebuild all binaries)"
+        )]
         binary: Option<String>,
     },
 }

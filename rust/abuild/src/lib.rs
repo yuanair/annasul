@@ -12,8 +12,3 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 pub mod command;
-
-fn main() {
-    let args = command::parse_args();
-    println!("input: {:?}", args);
-}

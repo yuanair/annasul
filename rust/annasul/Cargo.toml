@@ -9,4 +9,12 @@ edition.workspace = true
 description.workspace = true
 documentation.workspace = true
 
+[lib]
+name = "annasul"
+crate-type = ["rlib"]
+
+[[bin]]
+name = "annasul"
+path = "src/bin/main.rs"
+
 [dependencies]
