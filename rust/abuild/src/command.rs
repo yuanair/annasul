@@ -97,9 +97,9 @@
 //! [feature]: https://img.shields.io/badge/feature-orange.svg
 //!
 
-use clap::{CommandFactory, Parser, Subcommand, ValueHint};
+use clap::{value_parser, CommandFactory, Parser, Subcommand, ValueEnum, ValueHint};
 use clap_complete::aot::generate;
-use clap_complete::{Generator, Shell};
+use clap_complete::Generator;
 use io::Write;
 use std::ffi::OsString;
 use std::fmt::Debug;
@@ -113,120 +113,56 @@ pub struct Cli {
     sub_command: SubCommand,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
-pub enum ShellSubCommand {
-    /// Bourne Again `SHell` (bash)
-    #[clap(name = "bash")]
-    Bash,
-    /// Elvish shell
-    #[clap(name = "elvish")]
-    Elvish,
-    /// Friendly Interactive `SHell` (fish)
-    #[clap(name = "fish")]
-    Fish,
-    /// `PowerShell`
-    #[clap(name = "powershell")]
-    PowerShell,
-    /// Z `SHell` (zsh)
-    #[clap(name = "zsh")]
-    Zsh,
-}
+pub type Shell = clap_complete::Shell;
 
-impl Into<Shell> for ShellSubCommand {
-    fn into(self) -> Shell {
-        match self {
-            ShellSubCommand::Bash => Shell::Bash,
-            ShellSubCommand::Elvish => Shell::Elvish,
-            ShellSubCommand::Fish => Shell::Fish,
-            ShellSubCommand::PowerShell => Shell::PowerShell,
-            ShellSubCommand::Zsh => Shell::Zsh,
-        }
-    }
-}
-
-impl TryFrom<Shell> for ShellSubCommand {
-    type Error = &'static str;
-    fn try_from(shell: Shell) -> Result<Self, Self::Error> {
-        match shell {
-            Shell::Bash => Ok(ShellSubCommand::Bash),
-            Shell::Elvish => Ok(ShellSubCommand::Elvish),
-            Shell::Fish => Ok(ShellSubCommand::Fish),
-            Shell::PowerShell => Ok(ShellSubCommand::PowerShell),
-            Shell::Zsh => Ok(ShellSubCommand::Zsh),
-            _ => Err("unsupported shell"),
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Parser)]
-pub struct ShellOptions {
-    /// the shell to generate the completion for
-    #[clap(subcommand, action = ArgAction::Set, value_parser=value_parser!(Shell))]
-    shell_sub_command: ShellSubCommand,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
-pub enum AutoCompleteSubCommand {
+#[derive(Debug, Clone, PartialEq, Eq, ValueEnum)]
+pub enum AutoCompleteOptions {
     /// install completion script
     #[clap(name = "install")]
-    Install {
-        #[clap(flatten)]
-        shell: ShellOptions,
-    },
+    Install,
     /// reinstall completion script
     #[clap(name = "reinstall")]
-    Reinstall {
-        #[clap(flatten)]
-        shell: ShellOptions,
-    },
+    Reinstall,
     /// uninstall completion script
     #[clap(name = "uninstall")]
-    Uninstall {
-        #[clap(flatten)]
-        shell: ShellOptions,
-    },
+    Uninstall,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
 pub enum SubCommand {
     /// auto-completion script
-    #[clap(name = "auto-complete")]
     AutoComplete {
-        #[command(subcommand)]
-        sub_command: AutoCompleteSubCommand,
+        #[clap(value_parser=value_parser!(AutoCompleteOptions))]
+        command: AutoCompleteOptions,
+        #[clap(value_parser=value_parser!(Shell))]
+        shell: Shell,
     },
     /// initialize a new workspace or project
-    #[clap(name = "init")]
     Init {
         #[clap(flatten)]
         scope: ScopeOptions,
     },
     /// create a new workspace or project or profile
-    #[clap(name = "create")]
     Create {
         #[clap(flatten)]
         scope: ScopeOptions,
     },
     /// remove a workspace or project or profile
-    #[clap(name = "remove")]
     Remove {
         #[clap(flatten)]
         scope: ScopeOptions,
     },
     /// undo the last command in workspace or project or profile
-    #[clap(name = "undo")]
     Undo {
         #[clap(flatten)]
         scope: ScopeOptions,
     },
     /// redo the last command in workspace or project or profile
-    #[clap(name = "redo")]
     Redo {
         #[clap(flatten)]
         scope: ScopeOptions,
     },
     /// build workspace or project or profile
-    #[clap(name = "build")]
     Build {
         /// the binary to build (default: build all binaries)
         #[clap(short, long)]
@@ -235,13 +171,11 @@ pub enum SubCommand {
         scope: ScopeOptions,
     },
     /// clean workspace or project or profile
-    #[clap(name = "clean")]
     Clean {
         #[clap(flatten)]
         scope: ScopeOptions,
     },
     /// run binary in a workspace or project or profile
-    #[clap(name = "run")]
     Run {
         /// the binary to run (default: run all binaries)
         #[clap(short, long)]
@@ -253,7 +187,6 @@ pub enum SubCommand {
         scope: ScopeOptions,
     },
     /// rebuild workspace or project or profile
-    #[clap(name = "rebuild")]
     Rebuild {
         /// the binary to rebuild (default: rebuild all binaries)
         #[clap(short, long)]
