@@ -11,6 +11,35 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-fn main() {
-    println!("Hello, annasul!");
-}
+//!
+//! ## languages ![feature]
+//!
+//! > rust ![feature]
+//!
+//! > c/c++ ![feature]
+//! >
+//! > > make tool:
+//! > >
+//! > > > ![feature] make(Makefile)
+//! > > >
+//! > >
+//! > > > ![feature] cmake(CMakeLists.txt)
+//! > > >
+//! > >
+//! > > > ![feature] msbuild(*.sln)
+//!
+//! > c# ![feature]
+//! >
+//! > > make tool:
+//! > >
+//! > > > ![feature] make(Makefile)
+//! > > >
+//! > >
+//! > > > ![feature] msbuild(*.csproj)
+//!
+//! [note]: https://img.shields.io/badge/note-orange.svg?color=ddbb00
+//!
+//! [bug]: https://img.shields.io/badge/bug-red.svg
+//!
+//! [feature]: https://img.shields.io/badge/feature-orange.svg
+//!

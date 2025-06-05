@@ -9,5 +9,14 @@ edition.workspace = true
 description.workspace = true
 documentation.workspace = true
 
+[lib]
+name = "abuild"
+crate-type = ["rlib"]
+
+[[bin]]
+name = "abuild"
+path = "src/bin/main.rs"
+
 [dependencies]
-clap = { workspace = true, features = ["cargo", "derive", "unicode"] }
+clap = { version = "*", features = ["cargo", "derive", "unicode"] }
+clap_complete = "*"
