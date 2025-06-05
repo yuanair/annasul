@@ -206,7 +206,11 @@ pub struct ScopeOptions {
     #[clap(short = 'j', long, value_hint = ValueHint::DirPath)]
     pub project: Option<String>,
     /// set the profile name
-    #[clap(short, long, value_hint = ValueHint::Unknown)]
+    #[clap(short, long, value_parser = [
+        "debug", "release", // Cargo profiles
+        "Debug", "Release", "RelWithDebInfo", "MinSizeRel", // CMake profiles
+        "stable", "nightly" // Rustup profiles
+    ], value_hint = ValueHint::Unknown)]
     pub profile: Option<String>,
 }
 
