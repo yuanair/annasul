@@ -20,3 +20,4 @@ path = "src/bin/main.rs"
 [dependencies]
 clap = { version = "*", features = ["cargo", "derive", "unicode"] }
 clap_complete = "*"
+colored = "*"
