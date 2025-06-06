@@ -97,23 +97,27 @@
 //! [feature]: https://img.shields.io/badge/feature-orange.svg
 //!
 
-use clap::{value_parser, CommandFactory, Parser, Subcommand, ValueEnum, ValueHint};
+use clap::{value_parser, CommandFactory, Parser, Subcommand, ValueHint};
 use clap_complete::aot::generate;
 use clap_complete::Generator;
+use colored::Colorize;
 use io::Write;
+use std::borrow::Cow;
 use std::ffi::OsString;
 use std::fmt::{Debug, Display, Formatter};
 use std::io;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug)]
 pub enum Error {
     IOError(io::Error),
+    NoHomeDirError,
 }
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Error::IOError(e) => write!(f, "IO error: {}", e),
+            Error::NoHomeDirError => write!(f, "No home directory found"),
         }
     }
 }
@@ -121,6 +125,7 @@ impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Error::IOError(e) => Some(e),
+            Error::NoHomeDirError => None,
         }
     }
 }
@@ -134,28 +139,45 @@ pub struct Cli {
     sub_command: SubCommand,
 }
 
-pub type Shell = clap_complete::Shell;
+pub use clap_complete::Shell;
 
-#[derive(Debug, Clone, PartialEq, Eq, ValueEnum)]
-pub enum AutoCompleteCommand {
+#[derive(Debug, Clone, PartialEq, Eq, Parser)]
+pub struct ShellOptions {
+    /// the shell to generate the auto-completion script for
+    #[clap(value_parser=value_parser!(Shell))]
+    shell: Shell,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
+pub enum AutoCompleteSubCommand {
     /// install auto-completion script
-    Install,
+    Install {
+        #[clap(flatten)]
+        shell: ShellOptions,
+    },
     /// reinstall auto-completion script
-    Reinstall,
+    Reinstall {
+        #[clap(flatten)]
+        shell: ShellOptions,
+    },
     /// uninstall auto-completion script
-    Uninstall,
+    Uninstall {
+        #[clap(flatten)]
+        shell: ShellOptions,
+    },
     /// output auto-completion script
-    Output,
+    Output {
+        #[clap(flatten)]
+        shell: ShellOptions,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
 pub enum SubCommand {
     /// auto-completion script
     AutoComplete {
-        #[clap(value_parser=value_parser!(AutoCompleteCommand))]
-        command: AutoCompleteCommand,
-        #[clap(value_parser=value_parser!(Shell))]
-        shell: Shell,
+        #[clap(subcommand)]
+        sub_command: AutoCompleteSubCommand,
     },
     /// initialize a new workspace or project
     Init {
@@ -250,18 +272,139 @@ impl Cli {
     }
 }
 
+impl ShellOptions {
+    #[cfg(unix)]
+    pub fn config_dir(&self) -> Result<Cow<'static, Path>> {
+        match self.shell {
+            Shell::Bash => Ok(Cow::Borrowed(Path::new("/etc/bash_completion.d"))),
+            Shell::Zsh => Ok(Cow::Borrowed(Path::new(
+                "/usr/local/share/zsh/site-functions",
+            ))),
+            Shell::Fish => Ok(Cow::Borrowed(Path::new(
+                "/usr/share/fish/vendor_completions.d",
+            ))),
+            Shell::PowerShell => Ok(Cow::Borrowed(Path::new(
+                "/etc/powershell/Microsoft.PowerShell_profile.ps1",
+            ))),
+            Shell::Elvish => Ok(Cow::Borrowed(Path::new("/etc/elvish/rc.elv"))),
+            shell => panic!("unsupported shell: {}", shell),
+        }
+    }
+    pub fn config_file_name(&self) -> Cow<'static, Path> {
+        let app_name = crate::app_name();
+        match self.shell {
+            Shell::Bash => Cow::Owned(format!("{}.sh", app_name).into()),
+            Shell::Zsh => Cow::Owned(format!("_{}.zsh", app_name).into()),
+            Shell::Fish => Cow::Owned(format!("{}.fish", app_name).into()),
+            Shell::PowerShell => Cow::Owned(format!("{}.ps1", app_name).into()),
+            Shell::Elvish => Cow::Owned(format!("{}.elv", app_name).into()),
+            shell => panic!("unsupported shell: {}", shell),
+        }
+    }
+    pub fn config_file_path(&self) -> Result<Cow<'static, Path>> {
+        let config_dir = self.config_dir()?;
+        if !config_dir.exists() {
+            std::fs::create_dir_all(&config_dir).map_err(Error::IOError)?;
+        }
+        Ok(Cow::Owned(config_dir.join(self.config_file_name())))
+    }
+}
+
 impl SubCommand {
     pub fn run(&self) -> Result<()> {
         match self {
-            SubCommand::AutoComplete { command, shell } => {
+            SubCommand::AutoComplete { sub_command } => {
                 let mut buffer = Vec::new();
-                generate_completion(*shell, &crate::app_name(), &mut buffer);
-                match command {
-                    AutoCompleteCommand::Output => {
+                match sub_command {
+                    AutoCompleteSubCommand::Output { shell } => {
+                        generate_completion(shell.shell, &crate::app_name(), &mut buffer);
                         io::stdout().write_all(&buffer).map_err(Error::IOError)?;
                         Ok(())
                     }
-                    _ => todo!(),
+                    AutoCompleteSubCommand::Install { shell } => {
+                        let config_file_path = shell.config_file_path()?;
+                        println!(
+                            "the auto-completion script for {} will be installed in '{}'.",
+                            shell.shell,
+                            config_file_path.display()
+                        );
+                        {
+                            let mut config_file = match std::fs::File::create_new(&config_file_path) {
+                                Err(e) if e.kind() == io::ErrorKind::AlreadyExists => {
+                                    println!("{}: the auto-completion script for {} is already installed.", "WARNING".bright_yellow(), shell.shell);
+                                    return Ok(());
+                                }
+                                res => res,
+                            }.map_err(Error::IOError)?;
+                            generate_completion(shell.shell, &crate::app_name(), &mut config_file);
+                        }
+                        println!(
+                            "the auto-completion script for {} was installed {}.",
+                            shell.shell,
+                            "successfully".bright_green()
+                        );
+
+                        Ok(())
+                    }
+                    AutoCompleteSubCommand::Reinstall { shell } => {
+                        let config_file_path = shell.config_file_path()?;
+                        if config_file_path.exists() {
+                            println!(
+                                "the auto-completion script for {} will be reinstalled in '{}'.",
+                                shell.shell,
+                                config_file_path.display()
+                            );
+                            std::fs::remove_file(&config_file_path).map_err(Error::IOError)?;
+                            {
+                                let mut config_file = std::fs::File::create(&config_file_path)
+                                    .map_err(Error::IOError)?;
+                                generate_completion(
+                                    shell.shell,
+                                    &crate::app_name(),
+                                    &mut config_file,
+                                );
+                            }
+                            println!(
+                                "the auto-completion script for {} was reinstalled {}.",
+                                shell.shell,
+                                "successfully".bright_green()
+                            );
+                            Ok(())
+                        } else {
+                            println!(
+                                "{}: the auto-completion script for {} was not installed in '{}'.",
+                                "ERROR".bright_red(),
+                                shell.shell,
+                                config_file_path.display()
+                            );
+                            std::process::exit(1);
+                        }
+                    }
+                    AutoCompleteSubCommand::Uninstall { shell } => {
+                        let config_file_path = shell.config_file_path()?;
+                        if config_file_path.exists() {
+                            println!(
+                                "the auto-completion script for {} will be uninstalled from '{}'.",
+                                shell.shell,
+                                config_file_path.display()
+                            );
+                            std::fs::remove_file(&config_file_path).map_err(Error::IOError)?;
+                            println!(
+                                "the auto-completion script for {} was uninstalled {}.",
+                                shell.shell,
+                                "successfully".bright_green()
+                            );
+                            Ok(())
+                        } else {
+                            println!(
+                                "{}: the auto-completion script for {} was not installed in '{}'.",
+                                "ERROR".bright_red(),
+                                shell.shell,
+                                config_file_path.display()
+                            );
+                            std::process::exit(1);
+                        }
+                    }
                 }
             }
             SubCommand::Init { scope } => {
@@ -273,7 +416,9 @@ impl SubCommand {
             SubCommand::Remove { scope } => {
                 todo!()
             }
-            SubCommand::Undo { scope } => todo!(),
+            SubCommand::Undo { scope } => {
+                todo!()
+            }
             SubCommand::Redo { scope } => {
                 todo!()
             }

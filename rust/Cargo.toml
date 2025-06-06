@@ -16,3 +16,4 @@ documentation = "https://docs.rs/annasul"
 [workspace.dependencies]
 clap = "4.5.*"
 clap_complete = "4.5.*"
+colored = "3.0.*"
