@@ -13,14 +13,14 @@
 
 //!
 //! # commands:
-//! > > ![feature] auto-completion (install|reinstall|uninstall) script
+//! > > ![feature] auto-completion (install|reinstall|remove) script
 //! > > ```shell
 //! > > $ abuild auto-complete install bash
 //! > > the auto-completion script for bash was installed in '/etc/bash_completion.d/abuild' successfully.
 //! > > $ abuild auto-complete reinstall zsh
 //! > > the auto-completion script for zsh was installed in '/usr/local/share/zsh/site-functions/_abuild' successfully.
-//! > > $ abuild auto-complete uninstall bash
-//! > > the auto-completion script for bash was uninstalled from '/etc/bash_completion.d/abuild' successfully.
+//! > > $ abuild auto-complete remove bash
+//! > > the auto-completion script for bash was removed from '/etc/bash_completion.d/abuild' successfully.
 //! > > ```
 //! >
 //! > > ![feature] init/create/remove (workspace|project|profile)
@@ -160,8 +160,8 @@ pub enum AutoCompleteSubCommand {
         #[clap(flatten)]
         shell: ShellOptions,
     },
-    /// uninstall auto-completion script
-    Uninstall {
+    /// remove auto-completion script
+    Remove {
         #[clap(flatten)]
         shell: ShellOptions,
     },
@@ -284,20 +284,23 @@ impl ShellOptions {
                 "/usr/share/fish/vendor_completions.d",
             ))),
             Shell::PowerShell => Ok(Cow::Borrowed(Path::new(
-                "/etc/powershell/Microsoft.PowerShell_profile.ps1",
+                "/usr/local/share/powershell/Modules/",
             ))),
-            Shell::Elvish => Ok(Cow::Borrowed(Path::new("/etc/elvish/rc.elv"))),
+            Shell::Elvish => Ok(Cow::Borrowed(Path::new("/usr/share/elvish/lib/"))),
             shell => panic!("unsupported shell: {}", shell),
         }
     }
     pub fn config_file_name(&self) -> Cow<'static, Path> {
         let app_name = crate::app_name();
         match self.shell {
-            Shell::Bash => Cow::Owned(format!("{}.sh", app_name).into()),
-            Shell::Zsh => Cow::Owned(format!("_{}.zsh", app_name).into()),
+            Shell::Bash => match app_name {
+                Cow::Borrowed(app_name) => Cow::Borrowed(Path::new(app_name)),
+                Cow::Owned(app_name) => Cow::Owned(PathBuf::from(app_name)),
+            },
+            Shell::Zsh => Cow::Owned(format!("_{}", app_name).into()),
             Shell::Fish => Cow::Owned(format!("{}.fish", app_name).into()),
             Shell::PowerShell => Cow::Owned(format!("{}.ps1", app_name).into()),
-            Shell::Elvish => Cow::Owned(format!("{}.elv", app_name).into()),
+            Shell::Elvish => Cow::Owned(format!("_{}.elv", app_name).into()),
             shell => panic!("unsupported shell: {}", shell),
         }
     }
@@ -307,6 +310,34 @@ impl ShellOptions {
             std::fs::create_dir_all(&config_dir).map_err(Error::IOError)?;
         }
         Ok(Cow::Owned(config_dir.join(self.config_file_name())))
+    }
+    pub fn show_installed_info(&self, config_file_path: Cow<Path>) {
+        match self.shell {
+            Shell::PowerShell => {
+                println!(
+                    "{}: Please run 'Import-Module \"{}\"' in powershell",
+                    "INFO".bright_white(),
+                    config_file_path.display()
+                );
+            }
+            shell @ (Shell::Bash | Shell::Zsh | Shell::Fish) => {
+                println!(
+                    "{}: Please reset {1}, or run 'source \"{2}\"' in {1}",
+                    "INFO".bright_white(),
+                    shell,
+                    config_file_path.display()
+                );
+            }
+            Shell::Elvish => {
+                println!(
+                    "{}: Please reset {1}, or run '{1} \"{2}\"', \n\tFor more information, see https://github.com/zzamboni/elvish-completions.",
+                    "INFO".bright_white(),
+                    Shell::Elvish,
+                    config_file_path.display(),
+                );
+            }
+            shell => panic!("unsupported shell: {}", shell),
+        }
     }
 }
 
@@ -344,6 +375,8 @@ impl SubCommand {
                             "successfully".bright_green()
                         );
 
+                        shell.show_installed_info(config_file_path);
+
                         Ok(())
                     }
                     AutoCompleteSubCommand::Reinstall { shell } => {
@@ -369,6 +402,8 @@ impl SubCommand {
                                 shell.shell,
                                 "successfully".bright_green()
                             );
+
+                            shell.show_installed_info(config_file_path);
                             Ok(())
                         } else {
                             println!(
@@ -380,17 +415,17 @@ impl SubCommand {
                             std::process::exit(1);
                         }
                     }
-                    AutoCompleteSubCommand::Uninstall { shell } => {
+                    AutoCompleteSubCommand::Remove { shell } => {
                         let config_file_path = shell.config_file_path()?;
                         if config_file_path.exists() {
                             println!(
-                                "the auto-completion script for {} will be uninstalled from '{}'.",
+                                "the auto-completion script for {} will be removed from '{}'.",
                                 shell.shell,
                                 config_file_path.display()
                             );
                             std::fs::remove_file(&config_file_path).map_err(Error::IOError)?;
                             println!(
-                                "the auto-completion script for {} was uninstalled {}.",
+                                "the auto-completion script for {} was removed {}.",
                                 shell.shell,
                                 "successfully".bright_green()
                             );
