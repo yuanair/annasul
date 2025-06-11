@@ -11,18 +11,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//!
-//!
-//! # app
-//! ```
-//! // install rustup
-//! #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
-//! annasul::app::apps::desktop::rustup::install().unwrap();
-//! ```
-//!
+use crate::mod_all_os;
 
-#[cfg(feature = "app")]
-pub mod app;
-mod os_impl;
-
-mod marco;
+mod_all_os!{pub}
