@@ -12,17 +12,8 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 //!
-//!
-//! # app
-//! ```
-//! // install rustup
-//! #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
-//! annasul::app::apps::desktop::rustup::install().unwrap();
-//! ```
+//! application operation
 //!
 
-#[cfg(any(doc, feature = "app"))]
-pub mod app;
-mod os_impl;
-
-mod marco;
+#[cfg(any(doc, feature = "app-apps"))]
+pub mod apps;
