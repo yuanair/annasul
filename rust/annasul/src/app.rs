@@ -16,37 +16,28 @@
 //!
 
 use std::borrow::Cow;
-use std::ffi::OsStr;
-use std::fmt::{Display, Formatter, Pointer, Write};
+use std::fmt::{Display, Formatter, Write};
 use std::path::Path;
 
 #[cfg(any(doc, feature = "app-apps"))]
 pub mod apps;
-
-#[derive(Debug)]
-pub enum Error {}
-impl Display for Error {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Error => f.write_str(""),
-        }
-    }
-}
-impl std::error::Error for Error {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            Error => None,
-        }
-    }
-}
-pub type Result<T> = std::result::Result<T, Error>;
 pub trait App<'a> {
-    fn name() -> Cow<'a, str>;
-    fn version() -> Result<Cow<'a, str>>;
-    fn authors() -> Result<impl Iterator<Item = Cow<'a, str>>>;
-    fn home_page() -> Result<Cow<'a, str>>;
-    fn license() -> Result<Option<Cow<'a, str>>>;
-    fn license_file() -> Result<Option<Cow<'a, Path>>>;
-    fn description() -> Result<Cow<'a, str>>;
-    fn documentation() -> Result<Cow<'a, str>>;
+    type Error: std::error::Error;
+    type InstallInfo;
+    type ReinstallInfo;
+    type RemoveInfo;
+    type UpdateInfo;
+    fn name(&self) -> Cow<'a, str>;
+    async fn license(&self) -> Result<Option<Cow<'a, str>>, Self::Error>;
+    async fn license_file(&self) -> Result<Option<Cow<'a, Path>>, Self::Error>;
+    async fn description(&self) -> Result<Option<Cow<'a, str>>, Self::Error>;
+    async fn documentation(&self) -> Result<Option<Cow<'a, str>>, Self::Error>;
+    async fn home_page(&self) -> Result<Option<Cow<'a, str>>, Self::Error>;
+    async fn home_path(&self) -> Result<Option<Cow<'a, Path>>, Self::Error>;
+    async fn bin_path(&self) -> Result<Option<Cow<'a, Path>>, Self::Error>;
+    async fn version(&self) -> Result<Cow<'a, str>, Self::Error>;
+    async fn install(&self, info: Self::InstallInfo) -> Result<(), Self::Error>;
+    async fn reinstall(&self, info: Self::ReinstallInfo) -> Result<(), Self::Error>;
+    async fn remove(&self, info: Self::RemoveInfo) -> Result<(), Self::Error>;
+    async fn update(&self, info: Self::UpdateInfo) -> Result<(), Self::Error>;
 }
