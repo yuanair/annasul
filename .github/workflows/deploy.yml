@@ -1,12 +1,17 @@
 name: Deploy Homepage
 on:
   push:
-    branches: [ release ]
+    branches: [ "release" ]
+    workflow_dispatch:
     paths:
       - 'docs/**'
 permissions:
-  contents: write
+  contents: read
   pages: write
+  id-token: write
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
 jobs:
   build-deploy:
     runs-on: ubuntu-latest
@@ -24,14 +29,12 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: |
-          cd docs
-          npm install
+        working-directory: docs
+        run: npm install
 
       - name: Build project
-        run: |
-          cd docs
-          npm run build
+        working-directory: docs
+        run: npm run build
 
       - name: Setup Pages
         uses: actions/configure-pages@v2
