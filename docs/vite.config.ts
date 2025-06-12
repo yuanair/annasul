@@ -11,18 +11,16 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//!
-//!
-//! # app
-//! ```
-//! // install rustup
-//! #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
-//! annasul::app::apps::desktop::rustup::install().unwrap();
-//! ```
-//!
+import {defineConfig} from 'vite'
+import vue from '@vitejs/plugin-vue'
 
-#[cfg(any(doc, feature = "app"))]
-pub mod app;
-mod os_impl;
+export default defineConfig({
+    plugins: [vue()],
+    base: './',
+    build: {
+        outDir: 'dist'
+    }
+});
 
-mod marco;
+
+

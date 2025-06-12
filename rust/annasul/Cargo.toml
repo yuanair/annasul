@@ -18,4 +18,8 @@ crate-type = ["rlib"]
 name = "annasul"
 path = "src/bin/main.rs"
 
+[features]
+app = []
+app-apps = ["app"]
+
 [dependencies]
