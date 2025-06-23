@@ -74,9 +74,9 @@ impl Display for AppLicense {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             AppLicense::Unknown => write!(f, "Unknown"),
-            AppLicense::Text(s) => write!(f, "{}", s),
-            AppLicense::Or(a, b) => write!(f, "{} or {}", a, b),
-            AppLicense::File(path) => write!(f, "{:?}", path),
+            AppLicense::Text(s) => write!(f, "{s}"),
+            AppLicense::Or(a, b) => write!(f, "{a} or {b}"),
+            AppLicense::File(path) => write!(f, "{path:?}"),
         }
     }
 }

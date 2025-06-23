@@ -116,7 +116,7 @@ pub enum Error {
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Error::IOError(e) => write!(f, "IO error: {}", e),
+            Error::IOError(e) => write!(f, "IO error: {e}"),
             Error::NoHomeDirError => write!(f, "No home directory found"),
         }
     }
@@ -287,7 +287,7 @@ impl ShellOptions {
                 "/usr/local/share/powershell/Modules/",
             ))),
             Shell::Elvish => Ok(Cow::Borrowed(Path::new("/usr/share/elvish/lib/"))),
-            shell => panic!("unsupported shell: {}", shell),
+            shell => panic!("unsupported shell: {shell}"),
         }
     }
     pub fn config_file_name(&self) -> Cow<'static, Path> {
@@ -297,11 +297,11 @@ impl ShellOptions {
                 Cow::Borrowed(app_name) => Cow::Borrowed(Path::new(app_name)),
                 Cow::Owned(app_name) => Cow::Owned(PathBuf::from(app_name)),
             },
-            Shell::Zsh => Cow::Owned(format!("_{}", app_name).into()),
-            Shell::Fish => Cow::Owned(format!("{}.fish", app_name).into()),
-            Shell::PowerShell => Cow::Owned(format!("{}.ps1", app_name).into()),
-            Shell::Elvish => Cow::Owned(format!("_{}.elv", app_name).into()),
-            shell => panic!("unsupported shell: {}", shell),
+            Shell::Zsh => Cow::Owned(format!("_{app_name}").into()),
+            Shell::Fish => Cow::Owned(format!("{app_name}.fish").into()),
+            Shell::PowerShell => Cow::Owned(format!("{app_name}.ps1").into()),
+            Shell::Elvish => Cow::Owned(format!("_{app_name}.elv").into()),
+            shell => panic!("unsupported shell: {shell}"),
         }
     }
     pub fn config_file_path(&self) -> Result<Cow<'static, Path>> {
@@ -336,7 +336,7 @@ impl ShellOptions {
                     config_file_path.display(),
                 );
             }
-            shell => panic!("unsupported shell: {}", shell),
+            shell => panic!("unsupported shell: {shell}"),
         }
     }
 }

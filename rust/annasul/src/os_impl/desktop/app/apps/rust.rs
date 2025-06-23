@@ -11,18 +11,18 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 use crate::app::AppLicense;
+use log::trace;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::ffi::OsString;
 use std::fmt::{Display, Formatter};
-use std::io::{stderr, stdout};
-#[cfg(unix)]
-use std::os::unix::ffi::OsStringExt;
+use std::fs;
+use std::fs::{create_dir, exists, File};
+use std::io::{stderr, stdout, Write};
 use std::path::{Path, PathBuf};
 use std::process::{ExitStatus, Stdio};
+use tokio::io::AsyncReadExt;
 use tokio::process::Command;
-use trauma::download::{Download, Status};
-use trauma::downloader::DownloaderBuilder;
 
 #[derive(Default, Debug, Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
 pub struct Rustup {
@@ -42,24 +42,25 @@ pub enum Error {
         stderr: Cow<'static, str>,
     },
     FailedToGetHomeDir,
+    RequestError(reqwest::Error),
 }
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Error::Unsupported(info) => f.write_fmt(format_args!("Unsupported: {}", info)),
-            Error::IOError(e) => f.write_fmt(format_args!("IO error: {}", e)),
-            Error::TaskJoinError(e) => f.write_fmt(format_args!("Task join error: {}", e)),
-            Error::InnerError(info) => f.write_fmt(format_args!("Inner error: {}", info)),
+            Error::Unsupported(info) => f.write_fmt(format_args!("Unsupported: {info}")),
+            Error::IOError(e) => f.write_fmt(format_args!("IO error: {e}")),
+            Error::TaskJoinError(e) => f.write_fmt(format_args!("Task join error: {e}")),
+            Error::InnerError(info) => f.write_fmt(format_args!("Inner error: {info}")),
             Error::Failed {
                 exit_status,
                 stdin,
                 stdout,
                 stderr,
             } => f.write_fmt(format_args!(
-                "Failed:\n - exit status: {}\n - stdin:\n{}\n\n - stdout:\n{}\n\n - stderr:\n{}",
-                exit_status, stdin, stdout, stderr
+                "Failed:\n - exit status: {exit_status}\n - stdin:\n{stdin}\n\n - stdout:\n{stdout}\n\n - stderr:\n{stderr}"
             )),
             Error::FailedToGetHomeDir => f.write_fmt(format_args!("failed to get HOME dir")),
+            Error::RequestError(e) => f.write_fmt(format_args!("request error: {e}")),
         }
     }
 }
@@ -72,6 +73,7 @@ impl std::error::Error for Error {
             Error::InnerError(_) => None,
             Error::Failed { .. } => None,
             Error::FailedToGetHomeDir => None,
+            Error::RequestError(e) => Some(e),
         }
     }
 }
@@ -116,24 +118,33 @@ pub enum InstallInfo {
     Custom(InstallCustomInfo),
 }
 
+#[cfg(unix)]
 async fn download_rustup_init_sh() -> Result<()> {
     let url = "https://sh.rustup.rs";
-    let downloads = vec![
-        Download::try_from(url)
-            .map_err(|_| Error::InnerError(format!("url '{}' error", url).into()))?,
-    ];
-    let downloader = DownloaderBuilder::new()
-        .directory(PathBuf::from("cache"))
-        .build();
-    for summary in downloader.download(&downloads).await {
-        match summary.status() {
-            Status::Success => {}
-            Status::Fail(url) => Err(Error::InnerError(url.clone().into()))?,
-            Status::NotStarted => Err(Error::InnerError("not start".into()))?,
-            Status::Skipped(reason) => Err(Error::InnerError(reason.clone().into()))?,
-        }
+    let content = reqwest::get(url)
+        .await
+        .map_err(Error::RequestError)?
+        .text()
+        .await
+        .map_err(Error::RequestError)?;
+
+    if !exists("./cache").map_err(Error::IOError)? {
+        create_dir("cache").map_err(Error::IOError)?;
     }
-    Ok::<_, Error>(())
+    let mut file = File::create("./cache/rustup-init.sh").map_err(Error::IOError)?;
+    file.write_all(content.as_bytes()).map_err(Error::IOError)?;
+    Ok(())
+}
+
+#[cfg(unix)]
+async fn chmod_rustup_init_sh() -> Result<()> {
+    use std::os::unix::fs::PermissionsExt;
+    let path = Path::new("./cache/rustup-init.sh");
+    let metadata = fs::metadata(path).map_err(Error::IOError)?;
+    let mut permissions = metadata.permissions();
+    permissions.set_mode(permissions.mode() | 0o100);
+    fs::set_permissions(path, permissions).map_err(Error::IOError)?;
+    Ok(())
 }
 
 impl Display for Toolchain {
@@ -212,7 +223,7 @@ impl crate::app::AppPath for Rustup {
         Ok(Cow::Borrowed(self.home_path.as_path()))
     }
     async fn bin_path(&self) -> Result<Cow<'_, Path>> {
-        Ok(Cow::Owned(self.home_path.join("bin").into()))
+        Ok(Cow::Owned(self.home_path.join("bin")))
     }
 }
 impl crate::app::AppOper for Rustup {
@@ -223,16 +234,20 @@ impl crate::app::AppOper for Rustup {
     type UpdateInfo = ();
     async fn install(info: Self::InstallInfo) -> Result<Self> {
         if cfg!(unix) {
+            trace!("Installing Rustup with info: {info:?}");
             download_rustup_init_sh().await?;
+            trace!("Downloaded rustup-init.sh successfully");
+            chmod_rustup_init_sh().await?;
+            trace!("Chmod rustup-init.sh successfully");
             let shell: Cow<'static, str> = match info {
-                    InstallInfo::Default => "cat ./cache/rustup-init.sh | sh -s -- -y".into(),
+                    InstallInfo::Default => "./cache/rustup-init.sh -y".into(),
                     InstallInfo::Custom(InstallCustomInfo {
                                             default_host_triple,
                                             default_toolchain,
                                             profile,
                                             modify_path_variable,
                                         }) => format!(
-                        "cat ./cache/rustup-init.sh | sh -s -- -y --default-host-triple='{}' --default-toolchain='{}' --profile='{}'{}",
+                        "./cache/rustup-init.sh -y --default-host-triple='{}' --default-toolchain='{}' --profile='{}'{}",
                         default_host_triple,
                         default_toolchain,
                         profile,
@@ -240,37 +255,40 @@ impl crate::app::AppOper for Rustup {
                     )
                         .into(),
                 };
+            trace!("Shell command to execute: {shell}");
             let mut command = Command::new("/usr/bin/sh")
                 .stdin(Stdio::null())
-                .stdout(stdout())
-                .stderr(stderr())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
                 .arg("-c")
                 .arg(shell.as_ref())
                 .spawn()
                 .map_err(Error::IOError)?;
+            trace!("Command spawned successfully");
 
-            // let (mut stdout, mut stderr) = (
-            //     command.stdout.take().ok_or(Error::InnerError(
-            //         "Command 'sh': stdout is not available".into(),
-            //     ))?,
-            //     command.stderr.take().ok_or(Error::InnerError(
-            //         "Command 'sh': stderr is not available".into(),
-            //     ))?,
-            // );
+            let (mut stdout, mut stderr) = (
+                command.stdout.take().ok_or(Error::InnerError(
+                    "Command 'sh': stdout is not available".into(),
+                ))?,
+                command.stderr.take().ok_or(Error::InnerError(
+                    "Command 'sh': stderr is not available".into(),
+                ))?,
+            );
 
             let exit_status = command.wait().await.map_err(Error::IOError)?;
+            trace!("Command finished with exit status: {exit_status}");
 
             let mut stdout_buf = Vec::new();
-            // stdout
-            //     .read_to_end(&mut stdout_buf)
-            //     .await
-            //     .map_err(Error::IOError)?;
+            stdout
+                .read_to_end(&mut stdout_buf)
+                .await
+                .map_err(Error::IOError)?;
 
             let mut stderr_buf = Vec::new();
-            // stderr
-            //     .read_to_end(&mut stderr_buf)
-            //     .await
-            //     .map_err(Error::IOError)?;
+            stderr
+                .read_to_end(&mut stderr_buf)
+                .await
+                .map_err(Error::IOError)?;
             if exit_status.success() {
                 Ok(Self {
                     // ~/.config
@@ -279,6 +297,7 @@ impl crate::app::AppOper for Rustup {
                         .join(".config"),
                 })
             } else {
+                use std::os::unix::ffi::OsStringExt;
                 Err(Error::Failed {
                     exit_status,
                     stdin: "".into(),
@@ -320,6 +339,7 @@ mod tests {
     use crate::app::AppOper;
     #[tokio::test]
     async fn install_rustup() -> std::result::Result<(), Box<dyn std::error::Error>> {
+        env_logger::init();
         Rustup::install(InstallInfo::Default).await?;
         Ok::<_, Box<dyn std::error::Error>>(())
     }

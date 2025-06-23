@@ -16,5 +16,6 @@ use annasul::app::apps::rust::{InstallInfo, Rustup};
 
 #[tokio::main]
 async fn main() {
+    env_logger::init();
     Rustup::install(InstallInfo::Default).await.unwrap();
 }
