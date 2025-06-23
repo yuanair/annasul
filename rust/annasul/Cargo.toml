@@ -17,10 +17,21 @@ crate-type = ["rlib"]
 [[bin]]
 name = "annasul"
 path = "src/bin/main.rs"
+required-features = ["app-apps"]
 
 [features]
 app = []
 app-apps = ["app"]
 
 [dependencies]
-tokio = { version = "*", features = ["process", "io-util", "rt", "macros"] }
+tokio = { version = "1.*", features = [
+    "process",
+    "io-util",
+    "rt",
+    "macros",
+    "rt-multi-thread",
+] }
+serde = { version = "1.*", features = ["derive"] }
+log = { version = "*" }
+trauma = { version = "*", features = ["rustls"] }
+url = "2.5.4"

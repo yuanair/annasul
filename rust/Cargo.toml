@@ -6,7 +6,7 @@ exclude = []
 [workspace.package]
 version = "0.0.1"
 authors = ["yuanair@github.com"]
-homepage = "https://github.com/yuanair/annasul"
+homepage = "https://yuanair.github.io/annasul"
 repository = "https://github.com/yuanair/annasul"
 keywords = ["annasul"]
 license = "AGPL-3.0-only"
@@ -15,7 +15,10 @@ description = "User-friendly yet personalized tool library"
 documentation = "https://docs.rs/annasul"
 
 [workspace.dependencies]
-clap = "4.5.*"
-clap_complete = "4.5.*"
-colored = "3.0.*"
-tokio = "*"
+clap = "4.*"
+clap_complete = "4.*"
+colored = "3.*"
+tokio = "1.*"
+serde = "1.*"
+log = "*"
+trauma = "*"

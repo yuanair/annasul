@@ -442,35 +442,35 @@ impl SubCommand {
                     }
                 }
             }
-            SubCommand::Init { scope } => {
+            SubCommand::Init { scope: _scope } => {
                 todo!()
             }
-            SubCommand::Create { scope } => {
+            SubCommand::Create { scope: _scope } => {
                 todo!()
             }
-            SubCommand::Remove { scope } => {
+            SubCommand::Remove { scope: _scope } => {
                 todo!()
             }
-            SubCommand::Undo { scope } => {
+            SubCommand::Undo { scope: _scope } => {
                 todo!()
             }
-            SubCommand::Redo { scope } => {
+            SubCommand::Redo { scope: _scope } => {
                 todo!()
             }
-            SubCommand::Build { binary, scope } => {
+            SubCommand::Build { binary: _binary, scope: _scope } => {
                 todo!()
             }
-            SubCommand::Clean { scope } => {
+            SubCommand::Clean { scope: _scope } => {
                 todo!()
             }
             SubCommand::Run {
-                binary,
-                args,
-                scope,
+                binary: _binary,
+                args: _args,
+                scope: _scope,
             } => {
                 todo!()
             }
-            SubCommand::Rebuild { binary, scope } => {
+            SubCommand::Rebuild { binary: _binary, scope: _scope } => {
                 todo!()
             }
         }

@@ -11,6 +11,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-fn main() {
-    println!("Hello, annasul!");
+use annasul::app::AppOper;
+use annasul::app::apps::rust::{InstallInfo, Rustup};
+
+#[tokio::main]
+async fn main() {
+    Rustup::install(InstallInfo::Default).await.unwrap();
 }

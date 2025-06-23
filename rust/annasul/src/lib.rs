@@ -14,15 +14,21 @@
 //!
 //!
 //! # app
-//! ```
-//! # use annasul::app;
-//! // install rustup
-//! #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
-//! app::apps::desktop::rustup::Rustup::new().install().unwrap();
+//! ```no_run
+//! println!("Hello");
+//! let rustup = tokio::runtime::Runtime::new().unwrap().block_on( async {
+//!     use annasul::app::AppOper;
+//!     use annasul::app::apps::rust::{InstallInfo, Rustup};
+//!     // install rustup
+//!     Rustup::install(InstallInfo::Default).await
+//! } ).unwrap();
+//! println!("Hello {rustup:#?}");
 //! ```
 //!
 
-#[cfg(any(doc, test, feature = "app"))]
+#![allow(async_fn_in_trait)]
+
+#[cfg(any(doc, feature = "app"))]
 pub mod app;
 mod os_impl;
 

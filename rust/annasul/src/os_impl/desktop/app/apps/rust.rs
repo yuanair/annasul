@@ -10,32 +10,36 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
+use crate::app::AppLicense;
+use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
-use std::ffi::OsStr;
+use std::ffi::OsString;
 use std::fmt::{Display, Formatter};
+use std::io::{stderr, stdout};
 #[cfg(unix)]
-use std::os::unix::ffi::OsStrExt;
+use std::os::unix::ffi::OsStringExt;
 use std::path::{Path, PathBuf};
 use std::process::{ExitStatus, Stdio};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::process::Command;
+use trauma::download::{Download, Status};
+use trauma::downloader::DownloaderBuilder;
 
-#[derive(Debug)]
+#[derive(Default, Debug, Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
 pub struct Rustup {
     home_path: PathBuf,
 }
 
 #[derive(Debug)]
 pub enum Error {
-    Unsupported(String),
+    Unsupported(Cow<'static, str>),
     IOError(std::io::Error),
     TaskJoinError(tokio::task::JoinError),
-    InnerError(String),
+    InnerError(Cow<'static, str>),
     Failed {
         exit_status: ExitStatus,
-        stdin: String,
-        stdout: String,
-        stderr: String,
+        stdin: Cow<'static, str>,
+        stdout: Cow<'static, str>,
+        stderr: Cow<'static, str>,
     },
     FailedToGetHomeDir,
 }
@@ -72,7 +76,9 @@ impl std::error::Error for Error {
     }
 }
 pub type Result<T> = std::result::Result<T, Error>;
-#[derive(Default, Debug)]
+#[derive(
+    Default, Debug, Copy, Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Serialize, Deserialize,
+)]
 pub enum Toolchain {
     #[default]
     Stable,
@@ -80,33 +86,56 @@ pub enum Toolchain {
     Nightly,
     None,
 }
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
 pub enum HostTriple {
     #[default]
     Host,
     /// e.g. x86_64-unknown-linux-gnu
     Target(String),
 }
-#[derive(Default, Debug)]
+#[derive(
+    Default, Debug, Copy, Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Serialize, Deserialize,
+)]
 pub enum Profile {
     Minimal,
     #[default]
     Default,
     Complete,
 }
-#[derive(Debug)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
 pub struct InstallCustomInfo {
     default_host_triple: HostTriple,
     default_toolchain: Toolchain,
     profile: Profile,
     modify_path_variable: bool,
 }
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
 pub enum InstallInfo {
     #[default]
     Default,
     Custom(InstallCustomInfo),
 }
+
+async fn download_rustup_init_sh() -> Result<()> {
+    let url = "https://sh.rustup.rs";
+    let downloads = vec![
+        Download::try_from(url)
+            .map_err(|_| Error::InnerError(format!("url '{}' error", url).into()))?,
+    ];
+    let downloader = DownloaderBuilder::new()
+        .directory(PathBuf::from("cache"))
+        .build();
+    for summary in downloader.download(&downloads).await {
+        match summary.status() {
+            Status::Success => {}
+            Status::Fail(url) => Err(Error::InnerError(url.clone().into()))?,
+            Status::NotStarted => Err(Error::InnerError("not start".into()))?,
+            Status::Skipped(reason) => Err(Error::InnerError(reason.clone().into()))?,
+        }
+    }
+    Ok::<_, Error>(())
+}
+
 impl Display for Toolchain {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -144,43 +173,46 @@ impl Default for InstallCustomInfo {
         }
     }
 }
-impl<'a> crate::app::AppInfo<'a> for Rustup {
+impl crate::app::AppInfo for Rustup {
     type Error = Error;
-    async fn name(&self) -> Cow<'a, str> {
+    async fn name(&self) -> Cow<'_, str> {
         Cow::Borrowed("rustup")
     }
 
-    async fn license(&self) -> Result<Option<Cow<'a, str>>> {
+    async fn license(&self) -> Result<Cow<'_, AppLicense>> {
+        Ok(Cow::Owned(AppLicense::Or(
+            Box::new(AppLicense::Text("Apache".to_string())),
+            Box::new(AppLicense::Text("MIT".to_string())),
+        )))
+    }
+
+    async fn description(&self) -> Result<Cow<'_, str>> {
         todo!()
     }
 
-    async fn license_file(&self) -> Result<Option<Cow<'a, Path>>> {
-        todo!()
+    async fn documentation(&self) -> Result<Cow<'_, str>> {
+        Ok(Cow::Borrowed("https://rust-lang.github.io/rustup/"))
     }
 
-    async fn description(&self) -> Result<Option<Cow<'a, str>>> {
-        todo!()
+    async fn homepage(&self) -> Result<Cow<'_, str>> {
+        Ok(Cow::Borrowed("https://rustup.rs"))
     }
 
-    async fn documentation(&self) -> Result<Option<Cow<'a, str>>> {
-        todo!()
+    async fn repository(&self) -> Result<Cow<'_, str>> {
+        Ok(Cow::Borrowed("https://github.com/rust-lang/rustup/"))
     }
 
-    async fn home_page(&self) -> Result<Option<Cow<'a, str>>> {
-        Ok(Some(Cow::Borrowed("https://rustup.rs/")))
-    }
-
-    async fn version(&self) -> Result<Cow<'a, str>> {
+    async fn version(&self) -> Result<Cow<'_, str>> {
         todo!()
     }
 }
-impl<'a> crate::app::AppPath<'_> for Rustup {
+impl crate::app::AppPath for Rustup {
     type Error = Error;
-    async fn home_path(&self) -> std::result::Result<Option<Cow<'a, Path>>, Self::Error> {
-        Ok(Some((&self.home_path).into()))
+    async fn home_path(&self) -> Result<Cow<'_, Path>> {
+        Ok(Cow::Borrowed(self.home_path.as_path()))
     }
-    async fn bin_path(&self) -> std::result::Result<Option<Cow<'a, Path>>, Self::Error> {
-        todo!()
+    async fn bin_path(&self) -> Result<Cow<'_, Path>> {
+        Ok(Cow::Owned(self.home_path.join("bin").into()))
     }
 }
 impl crate::app::AppOper for Rustup {
@@ -190,76 +222,55 @@ impl crate::app::AppOper for Rustup {
     type RemoveInfo = ();
     type UpdateInfo = ();
     async fn install(info: Self::InstallInfo) -> Result<Self> {
-        // curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
         if cfg!(unix) {
-            let mut command = Command::new("curl")
-                .stdin(Stdio::piped())
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped())
-                .args([
-                    "--proto",
-                    "'=https'",
-                    "--tlsv1.2",
-                    "-sSf",
-                    "https://sh.rustup.rs",
-                ])
+            download_rustup_init_sh().await?;
+            let shell: Cow<'static, str> = match info {
+                    InstallInfo::Default => "cat ./cache/rustup-init.sh | sh -s -- -y".into(),
+                    InstallInfo::Custom(InstallCustomInfo {
+                                            default_host_triple,
+                                            default_toolchain,
+                                            profile,
+                                            modify_path_variable,
+                                        }) => format!(
+                        "cat ./cache/rustup-init.sh | sh -s -- -y --default-host-triple='{}' --default-toolchain='{}' --profile='{}'{}",
+                        default_host_triple,
+                        default_toolchain,
+                        profile,
+                        if modify_path_variable { " --modify-path" } else { "" }
+                    )
+                        .into(),
+                };
+            let mut command = Command::new("/usr/bin/sh")
+                .stdin(Stdio::null())
+                .stdout(stdout())
+                .stderr(stderr())
+                .arg("-c")
+                .arg(shell.as_ref())
                 .spawn()
                 .map_err(Error::IOError)?;
 
-            let (mut stdin, mut stdout, mut stderr) = (
-                command.stdin.take().ok_or(Error::InnerError(
-                    "Command 'curl': stdin is not available".to_string(),
-                ))?,
-                command.stdout.take().ok_or(Error::InnerError(
-                    "Command 'curl': stdout is not available".to_string(),
-                ))?,
-                command.stderr.take().ok_or(Error::InnerError(
-                    "Command 'curl': stderr is not available".to_string(),
-                ))?,
-            );
-
-            let (mut stdout_buf, mut stderr_buf) = (Vec::new(), Vec::new());
-
-            let stdin_buf: Cow<'static, str> = match info {
-                InstallInfo::Default => "1\n".into(),
-                InstallInfo::Custom(InstallCustomInfo {
-                    default_host_triple,
-                    default_toolchain,
-                    profile,
-                    modify_path_variable,
-                }) => format!(
-                    "2\n{}\n{}\n{}\n{}\n1\n",
-                    default_host_triple,
-                    default_toolchain,
-                    profile,
-                    if modify_path_variable { "Y" } else { "n" }
-                )
-                .into(),
-            };
-
-            let stdin_write_handle = {
-                let stdin_buf = &stdin_buf;
-                tokio::spawn(async move {
-                    stdin.write_all(stdin_buf.as_bytes()).await?;
-                    stdin.shutdown().await?;
-                    Ok::<_, std::io::Error>(())
-                })
-            };
-
-            let stdout_read_handle =
-                tokio::spawn(async move { stdout.read_to_end(&mut stdout_buf).await });
-
-            let stderr_read_handle =
-                tokio::spawn(async move { stderr.read_to_end(&mut stderr_buf).await });
-
-            let (stdin_write_result, stdout_read_handle, stderr_read_handle) =
-                tokio::try_join!(stdin_write_handle, stdout_read_handle, stderr_read_handle)
-                    .map_err(Error::TaskJoinError)?;
-            stdin_write_result.map_err(Error::IOError)?;
-            stdout_read_handle.map_err(Error::IOError)?;
-            stderr_read_handle.map_err(Error::IOError)?;
+            // let (mut stdout, mut stderr) = (
+            //     command.stdout.take().ok_or(Error::InnerError(
+            //         "Command 'sh': stdout is not available".into(),
+            //     ))?,
+            //     command.stderr.take().ok_or(Error::InnerError(
+            //         "Command 'sh': stderr is not available".into(),
+            //     ))?,
+            // );
 
             let exit_status = command.wait().await.map_err(Error::IOError)?;
+
+            let mut stdout_buf = Vec::new();
+            // stdout
+            //     .read_to_end(&mut stdout_buf)
+            //     .await
+            //     .map_err(Error::IOError)?;
+
+            let mut stderr_buf = Vec::new();
+            // stderr
+            //     .read_to_end(&mut stderr_buf)
+            //     .await
+            //     .map_err(Error::IOError)?;
             if exit_status.success() {
                 Ok(Self {
                     // ~/.config
@@ -270,34 +281,46 @@ impl crate::app::AppOper for Rustup {
             } else {
                 Err(Error::Failed {
                     exit_status,
-                    stdin: stdin_buf.into_owned(),
-                    stdout: OsStr::from_bytes(&stdout_buf)
+                    stdin: "".into(),
+                    stdout: OsString::from_vec(stdout_buf)
                         .to_string_lossy()
-                        .into_owned(),
-                    stderr: OsStr::from_bytes(&stderr_buf)
+                        .into_owned()
+                        .into(),
+                    stderr: OsString::from_vec(stderr_buf)
                         .to_string_lossy()
-                        .into_owned(),
+                        .into_owned()
+                        .into(),
                 })
             }
         } else if cfg!(windows) {
             todo!()
         } else {
-            Err(Error::Unsupported(format!(
-                "unsupported platform '{}'",
-                std::env::consts::OS
-            )))
+            Err(Error::Unsupported(
+                format!("unsupported platform '{}'", std::env::consts::OS).into(),
+            ))
         }
     }
 
-    async fn reinstall(self, info: Self::ReinstallInfo) -> Result<Self> {
+    async fn reinstall(self, _info: Self::ReinstallInfo) -> Result<Self> {
         todo!()
     }
 
-    async fn remove(self, info: Self::RemoveInfo) -> Result<()> {
+    async fn remove(self, _info: Self::RemoveInfo) -> Result<()> {
         todo!()
     }
 
-    async fn update(self, info: Self::UpdateInfo) -> Result<Self> {
+    async fn update(self, _info: Self::UpdateInfo) -> Result<Self> {
         todo!()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::app::AppOper;
+    #[tokio::test]
+    async fn install_rustup() -> std::result::Result<(), Box<dyn std::error::Error>> {
+        Rustup::install(InstallInfo::Default).await?;
+        Ok::<_, Box<dyn std::error::Error>>(())
     }
 }
