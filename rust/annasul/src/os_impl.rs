@@ -10,7 +10,5 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
-
 use crate::mod_all_os;
-
-mod_all_os!{pub}
+mod_all_os! {pub}

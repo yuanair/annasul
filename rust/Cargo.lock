@@ -50,6 +50,7 @@ dependencies = [
 name = "annasul_lang"
 version = "0.0.1"
 dependencies = [
+ "clap",
  "serde",
 ]
 

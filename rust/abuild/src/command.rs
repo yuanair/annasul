@@ -9,24 +9,25 @@
 // GNU Affero General Public License for more details.
 //
 // You should have received a copy of the GNU Affero General Public License
-// along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-//!
-//! # commands:
+// along with this program. If not, see <https://www.gnu.org/licenses/>. # commands:
 //! > > ![feature] auto-completion (install|reinstall|remove) script
 //! > > ```shell
 //! > > $ abuild auto-complete install bash
-//! > > the auto-completion script for bash was installed in '/etc/bash_completion.d/abuild' successfully.
+//! > > the auto-completion script for bash was installed in
+//! > > '/etc/bash_completion.d/abuild' successfully.
 //! > > $ abuild auto-complete reinstall zsh
-//! > > the auto-completion script for zsh was installed in '/usr/local/share/zsh/site-functions/_abuild' successfully.
+//! > > the auto-completion script for zsh was installed in
+//! > > '/usr/local/share/zsh/site-functions/_abuild' successfully.
 //! > > $ abuild auto-complete remove bash
-//! > > the auto-completion script for bash was removed from '/etc/bash_completion.d/abuild' successfully.
+//! > > the auto-completion script for bash was removed from
+//! > > '/etc/bash_completion.d/abuild' successfully.
 //! > > ```
 //! >
 //! > > ![feature] init/create/remove (workspace|project|profile)
 //! > > + ![note] init profile: unsupported yet.
 //! > > + ![note] init/create: The workspace directory must be empty.
-//! > > + ![note] create/remove profile: The current folder must be a (workspace|project), or the (-w|-j) option must be provided.
+//! > > + ![note] create/remove profile: The current folder must be a
+//! > > (workspace|project), or the (-w|-j) option must be provided.
 //! > > ```shell
 //! > > $ abuild init
 //! > > workspace '<current_directory>' was initialized successfully.
@@ -95,60 +96,54 @@
 //! [bug]: https://img.shields.io/badge/bug-red.svg
 //!
 //! [feature]: https://img.shields.io/badge/feature-orange.svg
-//!
+use std::{
+    borrow::Cow,
+    ffi::OsString,
+    fmt::{Debug, Display, Formatter},
+    io,
+    path::{Path, PathBuf},
+};
 
 use clap::{value_parser, CommandFactory, Parser, Subcommand, ValueHint};
-use clap_complete::aot::generate;
-use clap_complete::Generator;
+use clap_complete::{aot::generate, Generator};
 use colored::Colorize;
 use io::Write;
-use std::borrow::Cow;
-use std::ffi::OsString;
-use std::fmt::{Debug, Display, Formatter};
-use std::io;
-use std::path::{Path, PathBuf};
-
-#[derive(Debug)]
+#[derive(Debug, )]
 pub enum Error {
     IOError(io::Error),
     NoHomeDirError,
 }
 impl Display for Error {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_, >) -> std::fmt::Result {
         match self {
-            Error::IOError(e) => write!(f, "IO error: {e}"),
+            Error::IOError(e, ) => write!(f, "IO error: {e}"),
             Error::NoHomeDirError => write!(f, "No home directory found"),
         }
     }
 }
 impl std::error::Error for Error {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static), > {
         match self {
-            Error::IOError(e) => Some(e),
+            Error::IOError(e, ) => Some(e),
             Error::NoHomeDirError => None,
         }
     }
 }
-
-pub type Result<T> = std::result::Result<T, Error>;
-
-#[derive(Debug, Clone, PartialEq, Eq, Parser)]
+pub type Result<T, > = std::result::Result<T, Error, >;
+#[derive(Debug, Clone, PartialEq, Eq, Parser, )]
 #[command(version, about, author, long_about = None)]
 pub struct Cli {
     #[command(subcommand)]
     sub_command: SubCommand,
 }
-
 pub use clap_complete::Shell;
-
-#[derive(Debug, Clone, PartialEq, Eq, Parser)]
+#[derive(Debug, Clone, PartialEq, Eq, Parser, )]
 pub struct ShellOptions {
     /// the shell to generate the auto-completion script for
-    #[clap(value_parser=value_parser!(Shell))]
+    #[clap(value_parser = value_parser!(Shell))]
     shell: Shell,
 }
-
-#[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
+#[derive(Debug, Clone, PartialEq, Eq, Subcommand, )]
 pub enum AutoCompleteSubCommand {
     /// install auto-completion script
     Install {
@@ -171,8 +166,7 @@ pub enum AutoCompleteSubCommand {
         shell: ShellOptions,
     },
 }
-
-#[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
+#[derive(Debug, Clone, PartialEq, Eq, Subcommand, )]
 pub enum SubCommand {
     /// auto-completion script
     AutoComplete {
@@ -208,7 +202,7 @@ pub enum SubCommand {
     Build {
         /// the binary to build (default: build all binaries)
         #[clap(short, long)]
-        binary: Option<String>,
+        binary: Option<String, >,
         #[clap(flatten)]
         scope: ScopeOptions,
     },
@@ -221,10 +215,10 @@ pub enum SubCommand {
     Run {
         /// the binary to run (default: run all binaries)
         #[clap(short, long)]
-        binary: Option<String>,
+        binary: Option<String, >,
         /// the arguments to pass to the binary
         #[clap(trailing_var_arg = true, allow_hyphen_values = true)]
-        args: Vec<OsString>,
+        args: Vec<OsString, >,
         #[clap(flatten)]
         scope: ScopeOptions,
     },
@@ -232,70 +226,56 @@ pub enum SubCommand {
     Rebuild {
         /// the binary to rebuild (default: rebuild all binaries)
         #[clap(short, long)]
-        binary: Option<String>,
+        binary: Option<String, >,
         #[clap(flatten)]
         scope: ScopeOptions,
     },
 }
-
 /// Options for the scope of the command (workspace, project, profile)
-#[derive(Default, Debug, Clone, PartialEq, Eq, Parser)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Parser, )]
 pub struct ScopeOptions {
     /// set the workspace directory
     #[clap(short, long, value_hint = ValueHint::DirPath)]
-    pub workspace: Option<PathBuf>,
+    pub workspace: Option<PathBuf, >,
     /// set the project name
     #[clap(short = 'j', long, value_hint = ValueHint::DirPath)]
-    pub project: Option<String>,
+    pub project: Option<String, >,
     /// set the profile name
     #[clap(short, long, value_hint = ValueHint::Unknown)]
-    pub profile: Option<String>,
+    pub profile: Option<String, >,
 }
-
-pub fn parse_args() -> Cli {
-    Cli::parse()
-}
-
-pub fn generate_completion<G: Generator>(generator: G, bin_name: &str, buf: &mut dyn Write) {
+pub fn parse_args() -> Cli { Cli::parse() }
+pub fn generate_completion<G: Generator, >(generator: G, bin_name: &str, buf: &mut dyn Write) {
     generate(generator, &mut Cli::command(), bin_name, buf);
 }
-
 impl Cli {
-    pub fn run(&self) -> Result<()> {
-        self.sub_command().run()
-    }
-    pub fn sub_command(&self) -> &SubCommand {
-        &self.sub_command
-    }
-    pub fn sub_command_mut(&mut self) -> &mut SubCommand {
-        &mut self.sub_command
-    }
-}
+    pub fn run(&self) -> Result<(), > { self.sub_command().run() }
 
+    pub fn sub_command(&self) -> &SubCommand { &self.sub_command }
+
+    pub fn sub_command_mut(&mut self) -> &mut SubCommand { &mut self.sub_command }
+}
 impl ShellOptions {
     #[cfg(unix)]
-    pub fn config_dir(&self) -> Result<Cow<'static, Path>> {
+    pub fn config_dir(&self) -> Result<Cow<'static, Path, >, > {
         match self.shell {
             Shell::Bash => Ok(Cow::Borrowed(Path::new("/etc/bash_completion.d"))),
-            Shell::Zsh => Ok(Cow::Borrowed(Path::new(
-                "/usr/local/share/zsh/site-functions",
-            ))),
-            Shell::Fish => Ok(Cow::Borrowed(Path::new(
-                "/usr/share/fish/vendor_completions.d",
-            ))),
-            Shell::PowerShell => Ok(Cow::Borrowed(Path::new(
-                "/usr/local/share/powershell/Modules/",
-            ))),
+            Shell::Zsh => Ok(Cow::Borrowed(Path::new("/usr/local/share/zsh/site-functions"))),
+            Shell::Fish => Ok(Cow::Borrowed(Path::new("/usr/share/fish/vendor_completions.d"))),
+            Shell::PowerShell => {
+                Ok(Cow::Borrowed(Path::new("/usr/local/share/powershell/Modules/")))
+            }
             Shell::Elvish => Ok(Cow::Borrowed(Path::new("/usr/share/elvish/lib/"))),
             shell => panic!("unsupported shell: {shell}"),
         }
     }
-    pub fn config_file_name(&self) -> Cow<'static, Path> {
+
+    pub fn config_file_name(&self) -> Cow<'static, Path, > {
         let app_name = crate::app_name();
         match self.shell {
             Shell::Bash => match app_name {
-                Cow::Borrowed(app_name) => Cow::Borrowed(Path::new(app_name)),
-                Cow::Owned(app_name) => Cow::Owned(PathBuf::from(app_name)),
+                Cow::Borrowed(app_name, ) => Cow::Borrowed(Path::new(app_name)),
+                Cow::Owned(app_name, ) => Cow::Owned(PathBuf::from(app_name)),
             },
             Shell::Zsh => Cow::Owned(format!("_{app_name}").into()),
             Shell::Fish => Cow::Owned(format!("{app_name}.fish").into()),
@@ -304,14 +284,16 @@ impl ShellOptions {
             shell => panic!("unsupported shell: {shell}"),
         }
     }
-    pub fn config_file_path(&self) -> Result<Cow<'static, Path>> {
+
+    pub fn config_file_path(&self) -> Result<Cow<'static, Path, >, > {
         let config_dir = self.config_dir()?;
         if !config_dir.exists() {
             std::fs::create_dir_all(&config_dir).map_err(Error::IOError)?;
         }
         Ok(Cow::Owned(config_dir.join(self.config_file_name())))
     }
-    pub fn show_installed_info(&self, config_file_path: Cow<Path>) {
+
+    pub fn show_installed_info(&self, config_file_path: Cow<Path, >) {
         match self.shell {
             Shell::PowerShell => {
                 println!(
@@ -340,19 +322,18 @@ impl ShellOptions {
         }
     }
 }
-
 impl SubCommand {
-    pub fn run(&self) -> Result<()> {
+    pub fn run(&self) -> Result<(), > {
         match self {
-            SubCommand::AutoComplete { sub_command } => {
+            SubCommand::AutoComplete { sub_command, } => {
                 let mut buffer = Vec::new();
                 match sub_command {
-                    AutoCompleteSubCommand::Output { shell } => {
+                    AutoCompleteSubCommand::Output { shell, } => {
                         generate_completion(shell.shell, &crate::app_name(), &mut buffer);
                         io::stdout().write_all(&buffer).map_err(Error::IOError)?;
                         Ok(())
                     }
-                    AutoCompleteSubCommand::Install { shell } => {
+                    AutoCompleteSubCommand::Install { shell, } => {
                         let config_file_path = shell.config_file_path()?;
                         println!(
                             "the auto-completion script for {} will be installed in '{}'.",
@@ -360,13 +341,20 @@ impl SubCommand {
                             config_file_path.display()
                         );
                         {
-                            let mut config_file = match std::fs::File::create_new(&config_file_path) {
-                                Err(e) if e.kind() == io::ErrorKind::AlreadyExists => {
-                                    println!("{}: the auto-completion script for {} is already installed.", "WARNING".bright_yellow(), shell.shell);
-                                    return Ok(());
+                            let mut config_file =
+                                match std::fs::File::create_new(&config_file_path) {
+                                    Err(e, ) if e.kind() == io::ErrorKind::AlreadyExists => {
+                                        println!(
+                                            "{}: the auto-completion script for {} is already \
+                                             installed.",
+                                            "WARNING".bright_yellow(),
+                                            shell.shell
+                                        );
+                                        return Ok(());
+                                    }
+                                    res => res,
                                 }
-                                res => res,
-                            }.map_err(Error::IOError)?;
+                                    .map_err(Error::IOError)?;
                             generate_completion(shell.shell, &crate::app_name(), &mut config_file);
                         }
                         println!(
@@ -374,12 +362,10 @@ impl SubCommand {
                             shell.shell,
                             "successfully".bright_green()
                         );
-
                         shell.show_installed_info(config_file_path);
-
                         Ok(())
                     }
-                    AutoCompleteSubCommand::Reinstall { shell } => {
+                    AutoCompleteSubCommand::Reinstall { shell, } => {
                         let config_file_path = shell.config_file_path()?;
                         if config_file_path.exists() {
                             println!(
@@ -402,7 +388,6 @@ impl SubCommand {
                                 shell.shell,
                                 "successfully".bright_green()
                             );
-
                             shell.show_installed_info(config_file_path);
                             Ok(())
                         } else {
@@ -415,7 +400,7 @@ impl SubCommand {
                             std::process::exit(1);
                         }
                     }
-                    AutoCompleteSubCommand::Remove { shell } => {
+                    AutoCompleteSubCommand::Remove { shell, } => {
                         let config_file_path = shell.config_file_path()?;
                         if config_file_path.exists() {
                             println!(
@@ -442,35 +427,31 @@ impl SubCommand {
                     }
                 }
             }
-            SubCommand::Init { scope: _scope } => {
+            SubCommand::Init { scope: _scope, } => {
                 todo!()
             }
-            SubCommand::Create { scope: _scope } => {
+            SubCommand::Create { scope: _scope, } => {
                 todo!()
             }
-            SubCommand::Remove { scope: _scope } => {
+            SubCommand::Remove { scope: _scope, } => {
                 todo!()
             }
-            SubCommand::Undo { scope: _scope } => {
+            SubCommand::Undo { scope: _scope, } => {
                 todo!()
             }
-            SubCommand::Redo { scope: _scope } => {
+            SubCommand::Redo { scope: _scope, } => {
                 todo!()
             }
-            SubCommand::Build { binary: _binary, scope: _scope } => {
+            SubCommand::Build { binary: _binary, scope: _scope, } => {
                 todo!()
             }
-            SubCommand::Clean { scope: _scope } => {
+            SubCommand::Clean { scope: _scope, } => {
                 todo!()
             }
-            SubCommand::Run {
-                binary: _binary,
-                args: _args,
-                scope: _scope,
-            } => {
+            SubCommand::Run { binary: _binary, args: _args, scope: _scope, } => {
                 todo!()
             }
-            SubCommand::Rebuild { binary: _binary, scope: _scope } => {
+            SubCommand::Rebuild { binary: _binary, scope: _scope, } => {
                 todo!()
             }
         }

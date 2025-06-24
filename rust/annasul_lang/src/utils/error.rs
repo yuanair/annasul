@@ -9,25 +9,14 @@
 // GNU Affero General Public License for more details.
 //
 // You should have received a copy of the GNU Affero General Public License
-// along with this program. If not, see <https://www.gnu.org/licenses/>. # app
-//! ```no_run
-//! println!("Hello");
-//! let rustup = tokio::runtime::Runtime::new()
-//!     .unwrap()
-//!     .block_on(async {
-//!         use annasul::app::{
-//!             AppOper,
-//!             apps::rust::{InstallInfo, Rustup},
-//!         };
-//!         // install rustup
-//!         Rustup::install(InstallInfo::Default,).await
-//!     },)
-//!     .unwrap();
-//! println!("Hello {rustup:#?}");
-//! ```
-
-#![allow(async_fn_in_trait)]
-#[cfg(any(doc, feature = "app"))]
-pub mod app;
-mod marco;
-mod os_impl;
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+#[derive(Debug)]
+pub struct Error {
+    pos: ErrorPosition,
+    msg: String,
+}
+#[derive(Debug)]
+pub struct ErrorPosition {
+    col: usize,
+    line: usize,
+}

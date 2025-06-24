@@ -9,13 +9,6 @@
 // GNU Affero General Public License for more details.
 //
 // You should have received a copy of the GNU Affero General Public License
-// along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-//!
-//! applications
-//!
-
+// along with this program. If not, see <https://www.gnu.org/licenses/>. applications
 use crate::use_all_os;
-
-use_all_os!{pub, crate::os_impl :os: app::apps::*}
-
+use_all_os! {pub, crate::os_impl :os: app::apps::*}
