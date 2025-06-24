@@ -11,13 +11,3 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-#![doc = include_str!("lib.md")]
-#![cfg_attr(feature = "unstable-f16", feature(f16))]
-#![cfg_attr(feature = "unstable-f128", feature(f128))]
-pub mod codegen;
-pub mod ir;
-pub mod lexer;
-pub mod parser;
-pub mod semantic;
-pub mod types;
-pub mod utils;

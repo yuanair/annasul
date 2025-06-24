@@ -49,6 +49,9 @@ dependencies = [
 [[package]]
 name = "annasul_lang"
 version = "0.0.1"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "anstream"

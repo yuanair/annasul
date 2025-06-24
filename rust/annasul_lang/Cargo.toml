@@ -10,4 +10,11 @@ edition.workspace = true
 description.workspace = true
 documentation.workspace = true
 
+[features]
+unstable = ["serde/unstable"]
+unstable-f16 = ["unstable"]
+unstable-f128 = ["unstable"]
+serde = ["dep:serde"]
+
 [dependencies]
+serde = { version = "1.*", features = ["derive", "unstable"], optional = true }

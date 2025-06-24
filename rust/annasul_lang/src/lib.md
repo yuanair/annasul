@@ -11,10 +11,10 @@ println!("{*number}"); // output `1` and newline
 
 equivalent to
 
-```rust
+```ignore
 fn main() {
     let number = box 1; // let number = Box::new(1); 
-    println!("{}, *number")
+    println!("{}", *number)
 }
 ```
 
@@ -32,9 +32,21 @@ fn main() {
 |       ref        |    \    |    \     |       \       |  \  |  \   |      &T      |
 |   mutable ref    |    \    |    \     |       \       |  \  |  \   |    &mut T    |
 
-|     type      |          define          |                            size                            |
-|:-------------:|:------------------------:|:----------------------------------------------------------:|
-| dynamic array |         arr: [T]         |                size_of::\<T\>() * arr.len()                |
-| static array  |      arr: [T; len]       |                   size_of::\<T\>() * len                   |
-|  empty tuple  |        tuple: ()         |                             \                              |
-|     tuple     | tuple: (T1, T2, T3, ...) | size_of::\<T1>() +size_of::\<T2>() +size_of::\<T3>() + ... |
+|     type      |          define          |                             size                             |
+|:-------------:|:------------------------:|:------------------------------------------------------------:|
+| dynamic array |        arr: \[T\]        |                 size_of::\<T\>() * arr.len()                 |
+| static array  |     arr: \[T; len\]      |                    size_of::\<T\>() * len                    |
+|  empty tuple  |        tuple: ()         |                              \                               |
+|     tuple     | tuple: (T1, T2, T3, ...) | size_of::\<T1>() + size_of::\<T2>() + size_of::\<T3>() + ... |
+
+## Function
+
+```
+fn function(arg1: T1, arg2: T2, ...) -> ResultType {
+    let result: ResultType;
+    // ...
+    result
+}
+```
+
+
