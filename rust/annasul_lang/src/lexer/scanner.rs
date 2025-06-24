@@ -12,10 +12,9 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::lexer::token::Token;
-use crate::lexer::token::Token::EOF;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
-use std::io::{BufRead, Read};
+use std::io::BufRead;
 use std::str::Chars;
 
 pub trait Scanner<I: BufRead>: IntoIterator {

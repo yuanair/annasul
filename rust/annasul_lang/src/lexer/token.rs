@@ -182,11 +182,11 @@ pub enum Keyword {
 impl Display for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            Token::Comment(comm) => write!(f, "{}", comm),
-            Token::Identifier(identifier) => write!(f, "{}", identifier),
-            Token::Keyword(keyword) => write!(f, "{}", keyword),
-            Token::Literal(literal) => write!(f, "{}", literal),
-            Token::Operator(operator) => write!(f, "{}", operator),
+            Token::Comment(comm) => write!(f, "{comm}"),
+            Token::Identifier(identifier) => write!(f, "{identifier}"),
+            Token::Keyword(keyword) => write!(f, "{keyword}"),
+            Token::Literal(literal) => write!(f, "{literal}"),
+            Token::Operator(operator) => write!(f, "{operator}"),
             Token::EOF => write!(f, "<EOF>"),
         }
     }
@@ -196,7 +196,7 @@ impl Display for Comment {
         match (&self.comment_line_type, &self.comment_type) {
             (CommentLineType::SingleLine, CommentType::Line) => {
                 for line in self.comment.split('\n') {
-                    writeln!(f, "//{}", line)?
+                    writeln!(f, "//{line}")?
                 }
                 Ok(())
             }
@@ -205,7 +205,7 @@ impl Display for Comment {
             }
             (CommentLineType::SingleLine, CommentType::Inner) => {
                 for line in self.comment.split('\n') {
-                    writeln!(f, "///{}", line)?
+                    writeln!(f, "///{line}")?
                 }
                 Ok(())
             }
@@ -214,7 +214,7 @@ impl Display for Comment {
             }
             (CommentLineType::SingleLine, CommentType::Outer) => {
                 for line in self.comment.split('\n') {
-                    writeln!(f, "//!{}", line)?
+                    writeln!(f, "//!{line}")?
                 }
                 Ok(())
             }
@@ -231,31 +231,31 @@ impl Display for Identifier {
 }
 impl Display for Keyword {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 impl Display for Literal {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            Literal::U8(val) => write!(f, "{:?}", val),
-            Literal::U16(val) => write!(f, "{:?}", val),
-            Literal::U32(val) => write!(f, "{:?}", val),
-            Literal::U64(val) => write!(f, "{:?}", val),
-            Literal::U128(val) => write!(f, "{:?}", val),
-            Literal::I8(val) => write!(f, "{:?}", val),
-            Literal::I16(val) => write!(f, "{:?}", val),
-            Literal::I32(val) => write!(f, "{:?}", val),
-            Literal::I64(val) => write!(f, "{:?}", val),
-            Literal::I128(val) => write!(f, "{:?}", val),
+            Literal::U8(val) => write!(f, "{val:?}"),
+            Literal::U16(val) => write!(f, "{val:?}"),
+            Literal::U32(val) => write!(f, "{val:?}"),
+            Literal::U64(val) => write!(f, "{val:?}"),
+            Literal::U128(val) => write!(f, "{val:?}"),
+            Literal::I8(val) => write!(f, "{val:?}"),
+            Literal::I16(val) => write!(f, "{val:?}"),
+            Literal::I32(val) => write!(f, "{val:?}"),
+            Literal::I64(val) => write!(f, "{val:?}"),
+            Literal::I128(val) => write!(f, "{val:?}"),
             #[cfg(feature = "unstable-f16")]
             Literal::F16(val) => write!(f, "{:?}", val),
-            Literal::F32(val) => write!(f, "{:?}", val),
-            Literal::F64(val) => write!(f, "{:?}", val),
+            Literal::F32(val) => write!(f, "{val:?}"),
+            Literal::F64(val) => write!(f, "{val:?}"),
             #[cfg(feature = "unstable-f128")]
             Literal::F128(val) => write!(f, "{:?}", val),
-            Literal::Bool(val) => write!(f, "{:?}", val),
-            Literal::Char(val) => write!(f, "{:?}", val),
-            Literal::String(val) => write!(f, "{:?}", val),
+            Literal::Bool(val) => write!(f, "{val:?}"),
+            Literal::Char(val) => write!(f, "{val:?}"),
+            Literal::String(val) => write!(f, "{val:?}"),
         }
     }
 }
